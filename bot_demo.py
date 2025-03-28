@@ -5,7 +5,7 @@ import requests
 import streamlit as st
 
 #https://boostwaysbotfront-ijb2ot67q68andeqbm3gyf.streamlit.app/
-HOST = "https://pregnant-tessie-boostways-bv-f469777c.koyeb.app"
+HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
 def get_response(user_id, messages, session_id):
     payload = {
