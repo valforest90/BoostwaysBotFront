@@ -1,29 +1,41 @@
 import os
 import uuid
-
+import httpx
+import asyncio
+import json
 import requests
 import streamlit as st
+from dotenv import load_dotenv
+load_dotenv()
 
-#https://boostwaysbotfront-ijb2ot67q68andeqbm3gyf.streamlit.app/
 HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
-def get_response(user_id, messages, session_id):
+
+async def stream_response(user_id, messages, session_id):
+    user_id = "3"
     payload = {
-        "user_id": "1",
+        "user_id": user_id,
         "messages": messages,
-        "stream": False,
-        "session_id": "session_streamlit",
-        "audience":"external"
+        "stream": True,
+        "session_id": session_id,
     }
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
 
-    headers = {
-        "Authorization":f"Bearer {os.getenv("API_KEY")}",
-        "Content-Type": "application/json"}
-    response = requests.post(f"{HOST}/coach", headers=headers, json=payload)
-
-    return response.json()
-
+    async with httpx.AsyncClient(timeout=None) as client:
+        async with client.stream("POST", f"{HOST}/coach", headers=headers, json=payload) as response:
+            first = True
+            async for chunk in response.aiter_text():
+                try:
+                    data = json.loads(chunk)
+                    content = data.get("chunk", {}).get("choices", [{}])[0].get("delta", {}).get("content")
+                    if content:
+                        if first:
+                            agent_id = data.get("agent_id")
+                            yield f"{agent_id}: "
+                            first = False
+                        yield content
+                except json.JSONDecodeError:
+                    yield "[Stream Error]"
 
 def format_messages(messages):
     text = ""
@@ -36,7 +48,7 @@ def format_messages(messages):
     return text
 
 
-# Not sure if necessary for the internal chatbot
+# Not sure if necessary for the chatbot
 def upsert_user_details(user_id, user_details):
     text = ""
     for key, value in user_details.items():
@@ -48,7 +60,7 @@ def upsert_user_details(user_id, user_details):
 
 
 def main():
-    st.title("Boostways Internal Bot")
+    st.title("Boostways Bot")
 
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
@@ -70,21 +82,28 @@ def main():
 
     # React to user input
     if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
-        # Display user message in chat message container
-        st.chat_message("user").markdown(prompt)
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        response = get_response(st.session_state.user_id, st.session_state.messages, st.session_state.session_id)
         try:
-            assistant_message = response["choices"][0]["message"]["content"]
-        
-            assistant_message = response["agent_id"] + ": " + assistant_message
-            # Display assistant response in chat message container
-            with st.chat_message("assistant"):
-                st.markdown(assistant_message)
+            st.chat_message("user").markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
 
-            # Add assistant response to chat history
-            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+            # Use Streamlit's placeholder to dynamically update assistant message
+            message_placeholder = st.chat_message("assistant").empty()
+            streamed_text = ""
+
+            async def run_stream():
+                async for chunk in stream_response(
+                    st.session_state.user_id,
+                    st.session_state.messages,
+                    st.session_state.session_id,
+                ):
+                    nonlocal streamed_text
+                    streamed_text += chunk
+                    message_placeholder.markdown(streamed_text)
+
+            asyncio.run(run_stream())
+
+            st.session_state.messages.append({"role": "assistant", "content": streamed_text})
+
 
             with st.sidebar:
                 st.header("Debug Info")
@@ -98,10 +117,11 @@ def main():
 
                 text_contents = f"User {st.session_state.user_id}\n"
                 text_contents += format_messages(st.session_state.messages)
-                # Not sure if wanted for the internal chatbot
+                # Not sure if wanted for the chatbot
                 st.download_button("Download Conversation", text_contents)
         except Exception as e:
-            raise ValueError(response)
+            raise ValueError(e)
+
 
 
 if __name__ == "__main__":
