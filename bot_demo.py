@@ -11,17 +11,17 @@ load_dotenv()
 HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
 
-async def stream_response(user_id, messages, session_id):
+async def stream_response(user_id, messages, session_id, agent_id):
     for message in messages:
         if message["role"] == "assistant":
             message["content"] = message["content"][message["content"].find(":")+1:]
-    print(messages)
     user_id = "3"
     payload = {
         "user_id": user_id,
         "messages": messages,
         "stream": True,
         "session_id": session_id,
+        "agent_id": agent_id,
     }
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
 
@@ -36,6 +36,7 @@ async def stream_response(user_id, messages, session_id):
                         if first:
                             agent_id = data.get("agent_id")
                             yield f"{agent_id}: "
+                            st.session_state.agent_id = agent_id
                             first = False
                         yield content
                 except json.JSONDecodeError:
@@ -94,11 +95,16 @@ def main():
             message_placeholder = st.chat_message("assistant").empty()
             streamed_text = ""
 
+            if "agent_id" not in st.session_state:
+                st.session_state.agent_id = "Default"  
+
+
             async def run_stream():
                 async for chunk in stream_response(
                     st.session_state.user_id,
                     st.session_state.messages,
                     st.session_state.session_id,
+                    st.session_state.agent_id,
                 ):
                     nonlocal streamed_text
                     streamed_text += chunk
