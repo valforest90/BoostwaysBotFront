@@ -12,6 +12,10 @@ HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
 
 async def stream_response(user_id, messages, session_id):
+    for message in messages:
+        if message["role"] == "assistant":
+            message["content"] = message["content"][message["content"].find(":")+1:]
+    print(messages)
     user_id = "3"
     payload = {
         "user_id": user_id,
