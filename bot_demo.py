@@ -10,12 +10,12 @@ load_dotenv()
 
 HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
+USER_ID = 3
 
 async def stream_response(user_id, messages, session_id, agent_id):
     for message in messages:
         if message["role"] == "assistant":
             message["content"] = message["content"][message["content"].find(":")+1:]
-    user_id = "3"
     payload = {
         "user_id": user_id,
         "messages": messages,
@@ -42,6 +42,8 @@ async def stream_response(user_id, messages, session_id, agent_id):
                 except json.JSONDecodeError:
                     yield "[Stream Error]"
 
+
+
 def format_messages(messages):
     text = ""
     for m in messages:
@@ -52,18 +54,6 @@ def format_messages(messages):
 
     return text
 
-
-# Not sure if necessary for the chatbot
-def upsert_user_details(user_id, user_details):
-    text = ""
-    for key, value in user_details.items():
-        if value:
-            text += f"{key}: {value}\n"
-
-    json_data = {"user_id": user_id, "content": text}
-    requests.post(f"{HOST}/v1/user/upsert", json=json_data)
-
-
 def main():
     st.title("Boostways Bot")
 
@@ -71,7 +61,7 @@ def main():
         st.session_state.session_id = str(uuid.uuid4())
 
     if "user_id" not in st.session_state:
-        st.session_state.user_id = str(uuid.uuid4())
+        st.session_state.user_id = USER_ID
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -98,7 +88,6 @@ def main():
             if "agent_id" not in st.session_state:
                 st.session_state.agent_id = "Default"  
 
-
             async def run_stream():
                 async for chunk in stream_response(
                     st.session_state.user_id,
@@ -113,26 +102,30 @@ def main():
             asyncio.run(run_stream())
 
             st.session_state.messages.append({"role": "assistant", "content": streamed_text})
+            
+            # Get user information from /user_info
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
+            user_info = requests.get(f"{HOST}/user_info", headers=headers, params={"user_id": st.session_state.user_id})
+            if user_info.status_code == 200:
+                user_info_data = user_info.json()
+            else:
+                user_info_data = {"error": "Failed to fetch user info"}
 
+            # Display user info in the sidebar
+            with st.sidebar:
+                st.header("User Info")
+                st.json(user_info_data)
 
             with st.sidebar:
                 st.header("Debug Info")
                 st.caption(f"Sesson ID: {st.session_state.session_id}")
 
-                # with st.expander("Retrieved Boostways Resources"):
-                #     relevant_resources = debug_info["relevant_resources"]
-                #     st.write(relevant_resources)
-
-
-
                 text_contents = f"User {st.session_state.user_id}\n"
                 text_contents += format_messages(st.session_state.messages)
-                # Not sure if wanted for the chatbot
                 st.download_button("Download Conversation", text_contents)
+
         except Exception as e:
             raise ValueError(e)
-
-
 
 if __name__ == "__main__":
     main()
