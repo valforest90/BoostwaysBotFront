@@ -54,14 +54,27 @@ def format_messages(messages):
 
     return text
 
+
+def get_user_info():
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
+    user_info = requests.get(f"{HOST}/user_info", headers=headers, params={"user_id": st.session_state.user_id})
+    if user_info.status_code == 200:
+        user_info_data = user_info.json()
+    else:
+        user_info_data = {"error": "Failed to fetch user info"}
+    return user_info_data
+
 def main():
-    st.title("Boostways Bot")
 
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
 
     if "user_id" not in st.session_state:
         st.session_state.user_id = USER_ID
+    user_info_data = get_user_info()
+
+    if "disabled" not in st.session_state:
+        st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -69,6 +82,37 @@ def main():
 
     if "expander_expanded" not in st.session_state:
         st.session_state.expander_expanded = True
+
+    st.session_state.page_title = ""
+    
+    
+    # Display sidebar
+    with st.sidebar:
+        st.subheader("Brand Basics")
+        if st.button("Ideale Klantenkenner", use_container_width=True):
+            st.session_state.page_title = "Ideale Klantenkenner"
+
+        if st.button("Missie&Visie architect", use_container_width=True):
+            st.session_state.page_title = "Missie&Visie architect"
+
+        if st.button("Positioneringsexpert", use_container_width=True):
+            st.session_state.page_title = "Positioneringsexpert"
+
+        if st.button("De Pitchmaker", use_container_width=True):
+            st.session_state.page_title = "De Pitchmaker"
+
+        st.subheader("Main Bot")
+
+        if st.button("Boostways Bot", use_container_width=True, disabled=st.session_state.get('disabled')):
+            st.session_state.page_title = "Boostways Bot"
+
+        st.subheader("User Information")
+        user_info_placeholder = st.empty()
+        user_info_placeholder.json(user_info_data)
+        st.session_state.user_info = user_info_data
+
+    if st.session_state.page_title != "":
+        st.title(st.session_state.page_title)
 
     # Display chat messages from history on app rerun
     for message in st.session_state.messages:
@@ -104,12 +148,9 @@ def main():
             st.session_state.messages.append({"role": "assistant", "content": streamed_text})
             
             # Get user information from /user_info
-            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
-            user_info = requests.get(f"{HOST}/user_info", headers=headers, params={"user_id": st.session_state.user_id})
-            if user_info.status_code == 200:
-                user_info_data = user_info.json()
-            else:
-                user_info_data = {"error": "Failed to fetch user info"}
+            user_info_data = get_user_info()
+            st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
+            st.rerun()
 
             # Display user info in the sidebar
             with st.sidebar:
