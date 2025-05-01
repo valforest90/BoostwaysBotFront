@@ -72,6 +72,7 @@ def main():
     if "user_id" not in st.session_state:
         st.session_state.user_id = USER_ID
     user_info_data = get_user_info()
+    st.session_state.user_info = user_info_data
 
     if "disabled" not in st.session_state:
         st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
@@ -83,23 +84,46 @@ def main():
     if "expander_expanded" not in st.session_state:
         st.session_state.expander_expanded = True
 
-    st.session_state.page_title = ""
-    
+    if "page_title" not in st.session_state:
+        st.session_state.page_title = ""
+        
+    st.markdown("""<style>button[kind="primary"] {
+        background-color: #ff7893;
+        }
+    </style>""", unsafe_allow_html=True)
     
     # Display sidebar
     with st.sidebar:
         st.subheader("Brand Basics")
-        if st.button("Ideale Klantenkenner", use_container_width=True):
-            st.session_state.page_title = "Ideale Klantenkenner"
 
-        if st.button("Missie&Visie architect", use_container_width=True):
-            st.session_state.page_title = "Missie&Visie architect"
+        if st.session_state.user_info.get("ideal_customer"):
+            if st.button("Ideale Klantenkenner", use_container_width=True):
+                st.session_state.page_title = "Ideale Klantenkenner"
+        else:
+            if st.button("Ideale Klantenkenner", use_container_width=True, type="primary"):
+                st.session_state.page_title = "Ideale Klantenkenner"
 
-        if st.button("Positioneringsexpert", use_container_width=True):
-            st.session_state.page_title = "Positioneringsexpert"
 
-        if st.button("De Pitchmaker", use_container_width=True):
-            st.session_state.page_title = "De Pitchmaker"
+        if st.session_state.user_info.get("vision"):
+            if st.button("Missie&Visie architect", use_container_width=True):
+                st.session_state.page_title = "Missie&Visie architect"
+        else:
+            if st.button("Missie&Visie architect", use_container_width=True, type="primary"):
+                st.session_state.page_title = "Missie&Visie architect"
+
+        if st.session_state.user_info.get("positioning"):
+            if st.button("Positioneringsexpert", use_container_width=True):
+                st.session_state.page_title = "Positioneringsexpert"
+        else:
+            if st.button("Positioneringsexpert", use_container_width=True, type="primary"):
+                st.session_state.page_title = "Positioneringsexpert"
+
+        if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
+            if st.button("De Pitchmaker", use_container_width=True):
+                st.session_state.page_title = "De Pitchmaker"
+        else:
+            if st.button("De Pitchmaker", use_container_width=True, type="primary"):
+                st.session_state.page_title = "De Pitchmaker"
 
         st.subheader("Main Bot")
 
@@ -109,64 +133,63 @@ def main():
         st.subheader("User Information")
         user_info_placeholder = st.empty()
         user_info_placeholder.json(user_info_data)
-        st.session_state.user_info = user_info_data
 
     if st.session_state.page_title != "":
         st.title(st.session_state.page_title)
 
-    # Display chat messages from history on app rerun
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        # Display chat messages from history on app rerun
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
-    # React to user input
-    if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
-        try:
-            st.chat_message("user").markdown(prompt)
-            st.session_state.messages.append({"role": "user", "content": prompt})
+        # React to user input
+        if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
+            try:
+                st.chat_message("user").markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})
 
-            # Use Streamlit's placeholder to dynamically update assistant message
-            message_placeholder = st.chat_message("assistant").empty()
-            streamed_text = ""
+                # Use Streamlit's placeholder to dynamically update assistant message
+                message_placeholder = st.chat_message("assistant").empty()
+                streamed_text = ""
 
-            if "agent_id" not in st.session_state:
-                st.session_state.agent_id = "Default"  
+                if "agent_id" not in st.session_state:
+                    st.session_state.agent_id = "Default"  
 
-            async def run_stream():
-                async for chunk in stream_response(
-                    st.session_state.user_id,
-                    st.session_state.messages,
-                    st.session_state.session_id,
-                    st.session_state.agent_id,
-                ):
-                    nonlocal streamed_text
-                    streamed_text += chunk
-                    message_placeholder.markdown(streamed_text)
+                async def run_stream():
+                    async for chunk in stream_response(
+                        st.session_state.user_id,
+                        st.session_state.messages,
+                        st.session_state.session_id,
+                        st.session_state.agent_id,
+                    ):
+                        nonlocal streamed_text
+                        streamed_text += chunk
+                        message_placeholder.markdown(streamed_text)
 
-            asyncio.run(run_stream())
+                asyncio.run(run_stream())
 
-            st.session_state.messages.append({"role": "assistant", "content": streamed_text})
-            
-            # Get user information from /user_info
-            user_info_data = get_user_info()
-            st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
-            st.rerun()
+                st.session_state.messages.append({"role": "assistant", "content": streamed_text})
+                
+                # Get user information from /user_info
+                user_info_data = get_user_info()
+                st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
+                st.rerun()
 
-            # Display user info in the sidebar
-            with st.sidebar:
-                st.header("User Info")
-                st.json(user_info_data)
+                # Display user info in the sidebar
+                with st.sidebar:
+                    st.header("User Info")
+                    st.json(user_info_data)
 
-            with st.sidebar:
-                st.header("Debug Info")
-                st.caption(f"Sesson ID: {st.session_state.session_id}")
+                with st.sidebar:
+                    st.header("Debug Info")
+                    st.caption(f"Sesson ID: {st.session_state.session_id}")
 
-                text_contents = f"User {st.session_state.user_id}\n"
-                text_contents += format_messages(st.session_state.messages)
-                st.download_button("Download Conversation", text_contents)
+                    text_contents = f"User {st.session_state.user_id}\n"
+                    text_contents += format_messages(st.session_state.messages)
+                    st.download_button("Download Conversation", text_contents)
 
-        except Exception as e:
-            raise ValueError(e)
+            except Exception as e:
+                raise ValueError(e)
 
 if __name__ == "__main__":
     main()
