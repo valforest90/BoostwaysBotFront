@@ -16,13 +16,17 @@ async def stream_response(user_id, messages, session_id, agent_id):
     for message in messages:
         if message["role"] == "assistant":
             message["content"] = message["content"][message["content"].find(":")+1:]
+    
+
     payload = {
         "user_id": user_id,
         "messages": messages,
         "stream": True,
         "session_id": session_id,
-        "agent_id": agent_id,
+        "previous_agent_id": agent_id,
     }
+    if st.session_state.agent_id:
+        payload["agent_id"] = st.session_state.agent_id
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
 
     async with httpx.AsyncClient(timeout=None) as client:
@@ -36,7 +40,7 @@ async def stream_response(user_id, messages, session_id, agent_id):
                         if first:
                             agent_id = data.get("agent_id")
                             yield f"{agent_id}: "
-                            st.session_state.agent_id = agent_id
+                            st.session_state.current_agent_id = agent_id
                             first = False
                         yield content
                 except json.JSONDecodeError:
@@ -65,6 +69,8 @@ def get_user_info():
     return user_info_data
 
 def main():
+    if "agent_id" not in st.session_state:
+        st.session_state.agent_id = None
 
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
@@ -105,31 +111,38 @@ def main():
         if st.session_state.user_info.get("ideal_customer"):
             if st.button("Ideale Klantenkenner", use_container_width=True):
                 st.session_state.page_title = "Ideale Klantenkenner"
+                st.session_state.agent_id = "Ideale Klantenkenner"
         else:
             if st.button("Ideale Klantenkenner", use_container_width=True, type="primary"):
                 st.session_state.page_title = "Ideale Klantenkenner"
-
+                st.session_state.agent_id = "Ideale Klantenkenner"
 
         if st.session_state.user_info.get("vision"):
             if st.button("Missie&Visie architect", use_container_width=True):
                 st.session_state.page_title = "Missie&Visie architect"
+                st.session_state.agent_id = "Missie&Visie architect"
         else:
             if st.button("Missie&Visie architect", use_container_width=True, type="primary"):
                 st.session_state.page_title = "Missie&Visie architect"
+                st.session_state.agent_id = "Missie&Visie architect"
 
         if st.session_state.user_info.get("positioning"):
             if st.button("Positioneringsexpert", use_container_width=True):
                 st.session_state.page_title = "Positioneringsexpert"
+                st.session_state.agent_id = "Positioneringsexpert"
         else:
             if st.button("Positioneringsexpert", use_container_width=True, type="primary"):
                 st.session_state.page_title = "Positioneringsexpert"
+                st.session_state.agent_id = "Positioneringsexpert"
 
         if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
             if st.button("De Pitchmaker", use_container_width=True):
                 st.session_state.page_title = "De Pitchmaker"
+                st.session_state.agent_id = "De Pitchmaker"
         else:
             if st.button("De Pitchmaker", use_container_width=True, type="primary"):
                 st.session_state.page_title = "De Pitchmaker"
+                st.session_state.agent_id = "De Pitchmaker"
 
         st.subheader("Main Bot")
 
@@ -162,15 +175,15 @@ def main():
                 message_placeholder = st.chat_message("assistant").empty()
                 streamed_text = ""
 
-                if "agent_id" not in st.session_state:
-                    st.session_state.agent_id = "Default"  
+                if "current_agent_id" not in st.session_state:
+                    st.session_state.current_agent_id = "Default"  
 
                 async def run_stream():
                     async for chunk in stream_response(
                         st.session_state.user_id,
                         st.session_state.messages,
                         st.session_state.session_id,
-                        st.session_state.agent_id,
+                        st.session_state.current_agent_id,
                     ):
                         nonlocal streamed_text
                         streamed_text += chunk
@@ -180,8 +193,6 @@ def main():
 
                 st.session_state.messages.append({"role": "assistant", "content": streamed_text})
         
-    
-                st.rerun()
 
                 # Display user info in the sidebar
                 with st.sidebar:
@@ -195,6 +206,8 @@ def main():
                     text_contents = f"User {st.session_state.user_id}\n"
                     text_contents += format_messages(st.session_state.messages)
                     st.download_button("Download Conversation", text_contents)
+
+                st.rerun()
 
             except Exception as e:
                 raise ValueError(e)
