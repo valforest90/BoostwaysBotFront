@@ -153,6 +153,60 @@ def main():
         user_info_placeholder = st.empty()
         user_info_placeholder.json(user_info_data)
 
+    if st.session_state.page_title == "":
+        st.subheader("Brand Basics")
+
+        if st.session_state.user_info.get("ideal_customer"):
+            if st.button("Ideale Klantenkenner", use_container_width=True, key="b1"):
+                st.session_state.page_title = "Ideale Klantenkenner"
+                st.session_state.agent_id = "Ideale Klantenkenner"
+                st.rerun()
+        else:
+            if st.button("Ideale Klantenkenner", use_container_width=True, type="primary", key="b2"):
+                st.session_state.page_title = "Ideale Klantenkenner"
+                st.session_state.agent_id = "Ideale Klantenkenner"
+                st.rerun()
+
+        if st.session_state.user_info.get("vision"):
+            if st.button("Missie&Visie architect", use_container_width=True, key="b3"):
+                st.session_state.page_title = "Missie&Visie architect"
+                st.session_state.agent_id = "Missie&Visie architect"
+                st.rerun()
+        else:
+            if st.button("Missie&Visie architect", use_container_width=True, type="primary", key="b4"):
+                st.session_state.page_title = "Missie&Visie architect"
+                st.session_state.agent_id = "Missie&Visie architect"
+                st.rerun()
+
+        if st.session_state.user_info.get("positioning"):
+            if st.button("Positioneringsexpert", use_container_width=True, key="b5"):
+                st.session_state.page_title = "Positioneringsexpert"
+                st.session_state.agent_id = "Positioneringsexpert"
+                st.rerun()
+        else:
+            if st.button("Positioneringsexpert", use_container_width=True, type="primary", key="b6"):
+                st.session_state.page_title = "Positioneringsexpert"
+                st.session_state.agent_id = "Positioneringsexpert"
+                st.rerun()
+
+        if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
+            if st.button("De Pitchmaker", use_container_width=True, key="b7"):
+                st.session_state.page_title = "De Pitchmaker"
+                st.session_state.agent_id = "De Pitchmaker"
+                st.rerun()
+        else:
+            if st.button("De Pitchmaker", use_container_width=True, type="primary", key="b8"):
+                st.session_state.page_title = "De Pitchmaker"
+                st.session_state.agent_id = "De Pitchmaker"
+                st.rerun()
+
+        st.subheader("Main Bot")
+        if st.session_state.get('disabled'):
+            st.text("Gelieve alle merkbasics te voltooien om verder te gaan.")
+        if st.button("Boostways Bot", use_container_width=True, disabled=st.session_state.get('disabled'), key="b9"):
+            st.session_state.page_title = "Boostways Bot"
+            st.rerun()
+
     if st.session_state.page_title != "":
         st.title(st.session_state.page_title)
 
