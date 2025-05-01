@@ -72,10 +72,16 @@ def main():
     if "user_id" not in st.session_state:
         st.session_state.user_id = USER_ID
     user_info_data = get_user_info()
+
+    updated_keys = []
+    if "user_info" in st.session_state:
+        for key in ["vision", "manifesto", "positioning", "brand_story", "ideal_customer"]:
+            if user_info_data.get(key) != st.session_state.user_info.get(key):
+                updated_keys.append(key)
     st.session_state.user_info = user_info_data
 
-    if "disabled" not in st.session_state:
-        st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
+
+    st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
 
     # Initialize chat history
     if "messages" not in st.session_state:
@@ -142,6 +148,10 @@ def main():
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
+        # ✅ Notifications below messages
+        for key in updated_keys:
+            st.success(f'Value updated: {key}', icon="✅")
+
         # React to user input
         if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
             try:
@@ -169,10 +179,8 @@ def main():
                 asyncio.run(run_stream())
 
                 st.session_state.messages.append({"role": "assistant", "content": streamed_text})
-                
-                # Get user information from /user_info
-                user_info_data = get_user_info()
-                st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
+        
+    
                 st.rerun()
 
                 # Display user info in the sidebar
