@@ -68,6 +68,37 @@ def get_user_info():
         user_info_data = {"error": "Failed to fetch user info"}
     return user_info_data
 
+def process_prompt():
+    try:
+        # Use Streamlit's placeholder to dynamically update assistant message
+        message_placeholder = st.chat_message("assistant").empty()
+        streamed_text = ""
+
+        if "current_agent_id" not in st.session_state:
+            st.session_state.current_agent_id = "Default"  
+
+        async def run_stream():
+            async for chunk in stream_response(
+                st.session_state.user_id,
+                st.session_state.messages,
+                st.session_state.session_id,
+                st.session_state.current_agent_id,
+            ):
+                nonlocal streamed_text
+                streamed_text += chunk
+                message_placeholder.markdown(streamed_text)
+
+        asyncio.run(run_stream())
+
+        st.session_state.messages.append({"role": "assistant", "content": streamed_text})
+
+
+
+        st.rerun()
+
+    except Exception as e:
+        raise ValueError(e)
+
 def main():
     if "agent_id" not in st.session_state:
         st.session_state.agent_id = None
@@ -112,42 +143,52 @@ def main():
             if st.button("Ideale Klantenkenner", use_container_width=True):
                 st.session_state.page_title = "Ideale Klantenkenner"
                 st.session_state.agent_id = "Ideale Klantenkenner"
+                st.session_state.messages = []
         else:
             if st.button("Ideale Klantenkenner", use_container_width=True, type="primary"):
                 st.session_state.page_title = "Ideale Klantenkenner"
                 st.session_state.agent_id = "Ideale Klantenkenner"
+                st.session_state.messages = []
 
         if st.session_state.user_info.get("vision"):
             if st.button("Missie&Visie architect", use_container_width=True):
                 st.session_state.page_title = "Missie&Visie architect"
                 st.session_state.agent_id = "Missie&Visie architect"
+                st.session_state.messages = []
         else:
             if st.button("Missie&Visie architect", use_container_width=True, type="primary"):
                 st.session_state.page_title = "Missie&Visie architect"
                 st.session_state.agent_id = "Missie&Visie architect"
+                st.session_state.messages = []
 
         if st.session_state.user_info.get("positioning"):
             if st.button("Positioneringsexpert", use_container_width=True):
                 st.session_state.page_title = "Positioneringsexpert"
                 st.session_state.agent_id = "Positioneringsexpert"
+                st.session_state.messages = []
         else:
             if st.button("Positioneringsexpert", use_container_width=True, type="primary"):
                 st.session_state.page_title = "Positioneringsexpert"
                 st.session_state.agent_id = "Positioneringsexpert"
+                st.session_state.messages = []
 
         if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
             if st.button("De Pitchmaker", use_container_width=True):
                 st.session_state.page_title = "De Pitchmaker"
                 st.session_state.agent_id = "De Pitchmaker"
+                st.session_state.messages = []
         else:
             if st.button("De Pitchmaker", use_container_width=True, type="primary"):
                 st.session_state.page_title = "De Pitchmaker"
                 st.session_state.agent_id = "De Pitchmaker"
+                st.session_state.messages = []
 
         st.subheader("Main Bot")
 
         if st.button("Boostways Bot", use_container_width=True, disabled=st.session_state.get('disabled')):
             st.session_state.page_title = "Boostways Bot"
+            st.session_state.agent_id = None
+            st.session_state.messages = []
 
         st.subheader("User Information")
         user_info_placeholder = st.empty()
@@ -205,6 +246,7 @@ def main():
             st.text("Gelieve alle merkbasics te voltooien om verder te gaan.")
         if st.button("Boostways Bot", use_container_width=True, disabled=st.session_state.get('disabled'), key="b9"):
             st.session_state.page_title = "Boostways Bot"
+            st.session_state.agent_id = None
             st.rerun()
 
     if st.session_state.page_title != "":
@@ -221,50 +263,20 @@ def main():
 
         # React to user input
         if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
-            try:
-                st.chat_message("user").markdown(prompt)
-                st.session_state.messages.append({"role": "user", "content": prompt})
+            st.chat_message("user").markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            process_prompt()
 
-                # Use Streamlit's placeholder to dynamically update assistant message
-                message_placeholder = st.chat_message("assistant").empty()
-                streamed_text = ""
+        # First message
+        if len(st.session_state.messages) == 0:
+            process_prompt()
 
-                if "current_agent_id" not in st.session_state:
-                    st.session_state.current_agent_id = "Default"  
+    
+    with st.sidebar:
+        text_contents = f"User {st.session_state.user_id}\n"
+        text_contents += format_messages(st.session_state.messages)
+        st.download_button("Download Conversation", text_contents)
 
-                async def run_stream():
-                    async for chunk in stream_response(
-                        st.session_state.user_id,
-                        st.session_state.messages,
-                        st.session_state.session_id,
-                        st.session_state.current_agent_id,
-                    ):
-                        nonlocal streamed_text
-                        streamed_text += chunk
-                        message_placeholder.markdown(streamed_text)
-
-                asyncio.run(run_stream())
-
-                st.session_state.messages.append({"role": "assistant", "content": streamed_text})
-        
-
-                # Display user info in the sidebar
-                with st.sidebar:
-                    st.header("User Info")
-                    st.json(user_info_data)
-
-                with st.sidebar:
-                    st.header("Debug Info")
-                    st.caption(f"Sesson ID: {st.session_state.session_id}")
-
-                    text_contents = f"User {st.session_state.user_id}\n"
-                    text_contents += format_messages(st.session_state.messages)
-                    st.download_button("Download Conversation", text_contents)
-
-                st.rerun()
-
-            except Exception as e:
-                raise ValueError(e)
 
 if __name__ == "__main__":
     main()
