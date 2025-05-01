@@ -113,7 +113,7 @@ def main():
     updated_keys = []
     if "user_info" in st.session_state:
         for key in ["vision", "manifesto", "positioning", "brand_story", "ideal_customer"]:
-            if user_info_data.get(key) != st.session_state.user_info.get(key):
+            if user_info_data.get(key) != None and st.session_state.user_info.get(key) == None:
                 updated_keys.append(key)
     st.session_state.user_info = user_info_data
 
@@ -259,7 +259,7 @@ def main():
 
         # ✅ Notifications below messages
         for key in updated_keys:
-            st.success(f'Value updated: {key}', icon="✅")
+            st.success(f'New value saved: {key}', icon="✅")
 
         # React to user input
         if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
