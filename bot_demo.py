@@ -118,9 +118,6 @@ def main():
                 updated_keys.append(key)
     st.session_state.user_info = user_info_data
 
-
-    st.session_state.disabled = user_info_data.get("vision")==None or user_info_data.get("manifesto")==None or user_info_data.get("positioning")==None or user_info_data.get("brand_story")==None or user_info_data.get("ideal_customer")==None
-
     # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -186,7 +183,7 @@ def main():
 
         st.subheader("Main Bot")
 
-        if st.button("Boostways Bot", use_container_width=True, disabled=st.session_state.get('disabled')):
+        if st.button("Boostways Bot", use_container_width=True):
             st.session_state.page_title = "Boostways Bot"
             st.session_state.agent_id = None
             st.session_state.messages = []
@@ -243,9 +240,7 @@ def main():
                 st.rerun()
 
         st.subheader("Main Bot")
-        if st.session_state.get('disabled'):
-            st.text("Gelieve alle merkbasics te voltooien om verder te gaan.")
-        if st.button("Boostways Bot", use_container_width=True, disabled=st.session_state.get('disabled'), key="b9"):
+        if st.button("Boostways Bot", use_container_width=True,  key="b9"):
             st.session_state.page_title = "Boostways Bot"
             st.session_state.agent_id = None
             st.rerun()
