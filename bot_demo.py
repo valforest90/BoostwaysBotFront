@@ -32,20 +32,28 @@ async def stream_response(user_id, messages, session_id, agent_id):
     async with httpx.AsyncClient(timeout=None) as client:
         async with client.stream("POST", f"{HOST}/coach", headers=headers, json=payload) as response:
             first = True
+            buffer = ""  # Buffer to accumulate data
             async for chunk in response.aiter_text():
-                try:
-                    data = json.loads(chunk)
-                    content = data.get("chunk", {}).get("choices", [{}])[0].get("delta", {}).get("content")
-                    if content:
-                        if first:
-                            agent_id = data.get("agent_id")
-                            yield f"{agent_id}: "
-                            st.session_state.current_agent_id = agent_id
-                            first = False
-                        yield content
-                except json.JSONDecodeError:
-                    yield "[Stream Error]"
+                buffer += chunk  # Add the chunk to the buffer
 
+                while True:
+                    try:
+                        # Try to parse a JSON object from the buffer
+                        data, idx = json.JSONDecoder().raw_decode(buffer)
+                        buffer = buffer[idx:].lstrip()  # Remove the parsed object from the buffer
+                        
+                        # Now process the data
+                        content = data.get("chunk", {}).get("choices", [{}])[0].get("delta", {}).get("content")
+                        if content:
+                            if first:
+                                agent_id = data.get("agent_id")
+                                yield f"{agent_id}: "
+                                st.session_state.current_agent_id = agent_id
+                                first = False
+                            yield content
+                    except json.JSONDecodeError:
+                        # If there's not enough data to decode yet, just wait for more chunks
+                        break
 
 
 def format_messages(messages):
