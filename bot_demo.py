@@ -10,7 +10,6 @@ load_dotenv()
 
 HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
-USER_ID = 3
 
 async def stream_response(user_id, messages, session_id, agent_id):
     for message in messages:
@@ -108,170 +107,179 @@ def main():
         st.session_state.session_id = str(uuid.uuid4())
 
     if "user_id" not in st.session_state:
-        st.session_state.user_id = USER_ID
-    user_info_data = get_user_info()
+        number_input = st.text_input("Enter a user id:", key="number_input")
+        if number_input and not number_input.isnumeric():
+            st.error("Please enter a valid number.")
+        if st.button("Ok"):
+            if number_input.isnumeric():
+                st.session_state.user_id= int(number_input)
+                st.rerun()
+            else:
+                st.error("Input must be a number.")
+    else:
+        user_info_data = get_user_info()
 
-    updated_keys = []
-    if "user_info" in st.session_state:
-        for key in ["vision", "manifesto", "positioning", "brand_story", "ideal_customer"]:
-            if user_info_data.get(key) != None and st.session_state.user_info.get(key) == None:
-                updated_keys.append(key)
-    st.session_state.user_info = user_info_data
+        updated_keys = []
+        if "user_info" in st.session_state:
+            for key in ["vision", "manifesto", "positioning", "brand_story", "ideal_customer"]:
+                if user_info_data.get(key) != None and st.session_state.user_info.get(key) == None:
+                    updated_keys.append(key)
+        st.session_state.user_info = user_info_data
 
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-    if "expander_expanded" not in st.session_state:
-        st.session_state.expander_expanded = True
-
-    if "page_title" not in st.session_state:
-        st.session_state.page_title = ""
-        
-    st.markdown("""<style>button[kind="primary"] {
-        background-color: #ff7893;
-        }
-    </style>""", unsafe_allow_html=True)
-    
-    # Display sidebar
-    with st.sidebar:
-        st.subheader("Brand Basics")
-
-        if st.session_state.user_info.get("ideal_customer"):
-            if st.button("Ideale Klantenkenner", use_container_width=True):
-                st.session_state.page_title = "Ideale Klantenkenner"
-                st.session_state.agent_id = "Ideale Klantenkenner"
-                st.session_state.messages = []
-        else:
-            if st.button("Ideale Klantenkenner", use_container_width=True, type="primary"):
-                st.session_state.page_title = "Ideale Klantenkenner"
-                st.session_state.agent_id = "Ideale Klantenkenner"
-                st.session_state.messages = []
-
-        if st.session_state.user_info.get("vision"):
-            if st.button("Missie&Visie architect", use_container_width=True):
-                st.session_state.page_title = "Missie&Visie architect"
-                st.session_state.agent_id = "Missie&Visie architect"
-                st.session_state.messages = []
-        else:
-            if st.button("Missie&Visie architect", use_container_width=True, type="primary"):
-                st.session_state.page_title = "Missie&Visie architect"
-                st.session_state.agent_id = "Missie&Visie architect"
-                st.session_state.messages = []
-
-        if st.session_state.user_info.get("positioning"):
-            if st.button("Positioneringsexpert", use_container_width=True):
-                st.session_state.page_title = "Positioneringsexpert"
-                st.session_state.agent_id = "Positioneringsexpert"
-                st.session_state.messages = []
-        else:
-            if st.button("Positioneringsexpert", use_container_width=True, type="primary"):
-                st.session_state.page_title = "Positioneringsexpert"
-                st.session_state.agent_id = "Positioneringsexpert"
-                st.session_state.messages = []
-
-        if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
-            if st.button("De Pitchmaker", use_container_width=True):
-                st.session_state.page_title = "De Pitchmaker"
-                st.session_state.agent_id = "De Pitchmaker"
-                st.session_state.messages = []
-        else:
-            if st.button("De Pitchmaker", use_container_width=True, type="primary"):
-                st.session_state.page_title = "De Pitchmaker"
-                st.session_state.agent_id = "De Pitchmaker"
-                st.session_state.messages = []
-
-        st.subheader("Main Bot")
-
-        if st.button("Boostways Bot", use_container_width=True):
-            st.session_state.page_title = "Boostways Bot"
-            st.session_state.agent_id = None
+        # Initialize chat history
+        if "messages" not in st.session_state:
             st.session_state.messages = []
 
-        st.subheader("User Information")
-        user_info_placeholder = st.empty()
-        user_info_placeholder.json(user_info_data)
+        if "expander_expanded" not in st.session_state:
+            st.session_state.expander_expanded = True
 
-    if st.session_state.page_title == "":
-        st.subheader("Brand Basics")
+        if "page_title" not in st.session_state:
+            st.session_state.page_title = ""
+            
+        st.markdown("""<style>button[kind="primary"] {
+            background-color: #ff7893;
+            }
+        </style>""", unsafe_allow_html=True)
+        
+        # Display sidebar
+        with st.sidebar:
+            st.subheader("Brand Basics")
 
-        if st.session_state.user_info.get("ideal_customer"):
-            if st.button("Ideale Klantenkenner", use_container_width=True, key="b1"):
-                st.session_state.page_title = "Ideale Klantenkenner"
-                st.session_state.agent_id = "Ideale Klantenkenner"
+            if st.session_state.user_info.get("ideal_customer"):
+                if st.button("Ideale Klantenkenner", use_container_width=True):
+                    st.session_state.page_title = "Ideale Klantenkenner"
+                    st.session_state.agent_id = "Ideale Klantenkenner"
+                    st.session_state.messages = []
+            else:
+                if st.button("Ideale Klantenkenner", use_container_width=True, type="primary"):
+                    st.session_state.page_title = "Ideale Klantenkenner"
+                    st.session_state.agent_id = "Ideale Klantenkenner"
+                    st.session_state.messages = []
+
+            if st.session_state.user_info.get("vision"):
+                if st.button("Missie&Visie architect", use_container_width=True):
+                    st.session_state.page_title = "Missie&Visie architect"
+                    st.session_state.agent_id = "Missie&Visie architect"
+                    st.session_state.messages = []
+            else:
+                if st.button("Missie&Visie architect", use_container_width=True, type="primary"):
+                    st.session_state.page_title = "Missie&Visie architect"
+                    st.session_state.agent_id = "Missie&Visie architect"
+                    st.session_state.messages = []
+
+            if st.session_state.user_info.get("positioning"):
+                if st.button("Positioneringsexpert", use_container_width=True):
+                    st.session_state.page_title = "Positioneringsexpert"
+                    st.session_state.agent_id = "Positioneringsexpert"
+                    st.session_state.messages = []
+            else:
+                if st.button("Positioneringsexpert", use_container_width=True, type="primary"):
+                    st.session_state.page_title = "Positioneringsexpert"
+                    st.session_state.agent_id = "Positioneringsexpert"
+                    st.session_state.messages = []
+
+            if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
+                if st.button("De Pitchmaker", use_container_width=True):
+                    st.session_state.page_title = "De Pitchmaker"
+                    st.session_state.agent_id = "De Pitchmaker"
+                    st.session_state.messages = []
+            else:
+                if st.button("De Pitchmaker", use_container_width=True, type="primary"):
+                    st.session_state.page_title = "De Pitchmaker"
+                    st.session_state.agent_id = "De Pitchmaker"
+                    st.session_state.messages = []
+
+            st.subheader("Main Bot")
+
+            if st.button("Boostways Bot", use_container_width=True):
+                st.session_state.page_title = "Boostways Bot"
+                st.session_state.agent_id = None
+                st.session_state.messages = []
+
+            st.subheader("User Information")
+            user_info_placeholder = st.empty()
+            user_info_placeholder.json(user_info_data)
+
+        if st.session_state.page_title == "":
+            st.subheader("Brand Basics")
+
+            if st.session_state.user_info.get("ideal_customer"):
+                if st.button("Ideale Klantenkenner", use_container_width=True, key="b1"):
+                    st.session_state.page_title = "Ideale Klantenkenner"
+                    st.session_state.agent_id = "Ideale Klantenkenner"
+                    st.rerun()
+            else:
+                if st.button("Ideale Klantenkenner", use_container_width=True, type="primary", key="b2"):
+                    st.session_state.page_title = "Ideale Klantenkenner"
+                    st.session_state.agent_id = "Ideale Klantenkenner"
+                    st.rerun()
+
+            if st.session_state.user_info.get("vision"):
+                if st.button("Missie&Visie architect", use_container_width=True, key="b3"):
+                    st.session_state.page_title = "Missie&Visie architect"
+                    st.session_state.agent_id = "Missie&Visie architect"
+                    st.rerun()
+            else:
+                if st.button("Missie&Visie architect", use_container_width=True, type="primary", key="b4"):
+                    st.session_state.page_title = "Missie&Visie architect"
+                    st.session_state.agent_id = "Missie&Visie architect"
+                    st.rerun()
+
+            if st.session_state.user_info.get("positioning"):
+                if st.button("Positioneringsexpert", use_container_width=True, key="b5"):
+                    st.session_state.page_title = "Positioneringsexpert"
+                    st.session_state.agent_id = "Positioneringsexpert"
+                    st.rerun()
+            else:
+                if st.button("Positioneringsexpert", use_container_width=True, type="primary", key="b6"):
+                    st.session_state.page_title = "Positioneringsexpert"
+                    st.session_state.agent_id = "Positioneringsexpert"
+                    st.rerun()
+
+            if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
+                if st.button("De Pitchmaker", use_container_width=True, key="b7"):
+                    st.session_state.page_title = "De Pitchmaker"
+                    st.session_state.agent_id = "De Pitchmaker"
+                    st.rerun()
+            else:
+                if st.button("De Pitchmaker", use_container_width=True, type="primary", key="b8"):
+                    st.session_state.page_title = "De Pitchmaker"
+                    st.session_state.agent_id = "De Pitchmaker"
+                    st.rerun()
+
+            st.subheader("Main Bot")
+            if st.button("Boostways Bot", use_container_width=True,  key="b9"):
+                st.session_state.page_title = "Boostways Bot"
+                st.session_state.agent_id = None
                 st.rerun()
-        else:
-            if st.button("Ideale Klantenkenner", use_container_width=True, type="primary", key="b2"):
-                st.session_state.page_title = "Ideale Klantenkenner"
-                st.session_state.agent_id = "Ideale Klantenkenner"
-                st.rerun()
 
-        if st.session_state.user_info.get("vision"):
-            if st.button("Missie&Visie architect", use_container_width=True, key="b3"):
-                st.session_state.page_title = "Missie&Visie architect"
-                st.session_state.agent_id = "Missie&Visie architect"
-                st.rerun()
-        else:
-            if st.button("Missie&Visie architect", use_container_width=True, type="primary", key="b4"):
-                st.session_state.page_title = "Missie&Visie architect"
-                st.session_state.agent_id = "Missie&Visie architect"
-                st.rerun()
+        if st.session_state.page_title != "":
+            st.title(st.session_state.page_title)
 
-        if st.session_state.user_info.get("positioning"):
-            if st.button("Positioneringsexpert", use_container_width=True, key="b5"):
-                st.session_state.page_title = "Positioneringsexpert"
-                st.session_state.agent_id = "Positioneringsexpert"
-                st.rerun()
-        else:
-            if st.button("Positioneringsexpert", use_container_width=True, type="primary", key="b6"):
-                st.session_state.page_title = "Positioneringsexpert"
-                st.session_state.agent_id = "Positioneringsexpert"
-                st.rerun()
+            # Display chat messages from history on app rerun
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
 
-        if st.session_state.user_info.get("manifesto") and st.session_state.user_info.get("brand_story"):
-            if st.button("De Pitchmaker", use_container_width=True, key="b7"):
-                st.session_state.page_title = "De Pitchmaker"
-                st.session_state.agent_id = "De Pitchmaker"
-                st.rerun()
-        else:
-            if st.button("De Pitchmaker", use_container_width=True, type="primary", key="b8"):
-                st.session_state.page_title = "De Pitchmaker"
-                st.session_state.agent_id = "De Pitchmaker"
-                st.rerun()
+            # ✅ Notifications below messages
+            for key in updated_keys:
+                st.success(f'New value saved: {key}', icon="✅")
 
-        st.subheader("Main Bot")
-        if st.button("Boostways Bot", use_container_width=True,  key="b9"):
-            st.session_state.page_title = "Boostways Bot"
-            st.session_state.agent_id = None
-            st.rerun()
+            # React to user input
+            if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
+                st.chat_message("user").markdown(prompt)
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                process_prompt()
 
-    if st.session_state.page_title != "":
-        st.title(st.session_state.page_title)
+            # First message
+            if len(st.session_state.messages) == 0:
+                process_prompt()
 
-        # Display chat messages from history on app rerun
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        # ✅ Notifications below messages
-        for key in updated_keys:
-            st.success(f'New value saved: {key}', icon="✅")
-
-        # React to user input
-        if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
-            st.chat_message("user").markdown(prompt)
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            process_prompt()
-
-        # First message
-        if len(st.session_state.messages) == 0:
-            process_prompt()
-
-    
-    with st.sidebar:
-        text_contents = f"User {st.session_state.user_id}\n"
-        text_contents += format_messages(st.session_state.messages)
-        st.download_button("Download Conversation", text_contents)
+        
+        with st.sidebar:
+            text_contents = f"User {st.session_state.user_id}\n"
+            text_contents += format_messages(st.session_state.messages)
+            st.download_button("Download Conversation", text_contents)
 
 
 if __name__ == "__main__":
