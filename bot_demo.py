@@ -17,7 +17,7 @@ async def stream_response(user_id, messages, session_id, agent_id):
             message["content"] = message["content"][message["content"].find(":")+1:]
     
     if len(messages) == 0:
-        messages = [{"role":"user", "content":"Hello."}]
+        messages = []
     payload = {
         "user_id": user_id,
         "messages": messages,
