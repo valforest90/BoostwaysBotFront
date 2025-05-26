@@ -170,6 +170,9 @@ def main():
             
             # Display sidebar
             with st.sidebar:
+                st.subheader("Session ID")
+                st.code(st.session_state.session_id, language='text')
+                
                 st.subheader("Brand Basics")
 
                 if st.session_state.user_info.get("ideal_customer"):
