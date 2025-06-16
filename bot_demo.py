@@ -31,6 +31,20 @@ async def stream_response(user_id, messages, session_id, agent_id):
 
     async with httpx.AsyncClient(timeout=None) as client:
         async with client.stream("POST", f"{HOST}/coach", headers=headers, json=payload) as response:
+                    
+                    
+            if response.status_code >= 400:
+                error_text = await response.aread()
+                try:
+                    error_json = json.loads(error_text)
+                    error_msg = error_json.get("detail") or str(error_json)
+                except json.JSONDecodeError:
+                    error_msg = error_text.decode("utf-8")
+
+
+                st.session_state.error_message = f"Server Error {response.status_code}: {error_msg}"
+                return  # Exit early, don't proceed to streaming
+        
             first = True
             buffer = ""  # Buffer to accumulate data
             async for chunk in response.aiter_text():
@@ -162,6 +176,9 @@ def main():
 
             if "page_title" not in st.session_state:
                 st.session_state.page_title = ""
+
+            if "error_message" not in st.session_state:
+                st.session_state.error_message = ""
                 
             st.markdown("""<style>button[kind="primary"] {
                 background-color: #ff7893;
@@ -229,6 +246,10 @@ def main():
                 st.subheader("User Information")
                 user_info_placeholder = st.empty()
                 user_info_placeholder.json(user_info_data)
+
+                if st.session_state.error_message:
+                    st.subheader("Error")
+                    st.markdown(st.session_state.error_message)
 
             if st.session_state.page_title == "":
                 st.subheader("Brand Basics")
