@@ -122,7 +122,11 @@ def process_prompt():
 
         asyncio.run(run_stream())
 
-        st.session_state.messages.append({"role": "assistant", "content": streamed_text})
+        # inside process_prompt(), after streaming finishes
+        agent_id = st.session_state.current_agent_id or "Default"
+        final_message = f"{agent_id}: {streamed_text}"
+
+        st.session_state.messages.append({"role": "assistant", "content": final_message})
 
 
 
