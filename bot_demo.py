@@ -81,6 +81,17 @@ def format_messages(messages):
     return text
 
 
+@st.cache_data(ttl=60)
+def get_configured_agents():
+    try:
+        response = requests.get("https://boostways-agents.koyeb.app/agents", timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        return data
+    except Exception:
+        return []
+
+
 def get_user_info():
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
     user_info = requests.get(f"{HOST}/user_info", headers=headers, params={"user_id": st.session_state.user_id})
@@ -98,6 +109,7 @@ def set_user_name(name):
     else:
         user_info_data = {"error": "Failed to fetch user info"}
     return user_info_data
+
 
 
 def process_prompt():
@@ -122,7 +134,6 @@ def process_prompt():
 
         asyncio.run(run_stream())
 
-        # inside process_prompt(), after streaming finishes
         agent_id = st.session_state.current_agent_id or "Default"
         final_message = f"{agent_id}: {streamed_text}"
 
@@ -143,6 +154,7 @@ def main():
         st.session_state.session_id = str(uuid.uuid4())
 
     if "user_id" not in st.session_state:
+        st.subheader("Welcome")
         number_input = st.text_input("Enter a user id:", key="number_input")
         if number_input and not number_input.isnumeric():
             st.error("Please enter a valid number.")
@@ -152,6 +164,14 @@ def main():
                 st.rerun()
             else:
                 st.error("Input must be a number.")
+
+        st.write("---")
+        st.subheader("Configured Agents")
+        agents = get_configured_agents()
+        if not agents:
+            st.info("No agents found or failed to fetch agents.")
+        else:
+            st.write(agents["agents"])
     else:
         user_info_data = get_user_info()
 
