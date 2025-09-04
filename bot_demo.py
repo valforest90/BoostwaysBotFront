@@ -214,7 +214,7 @@ def main():
                 st.subheader("Session ID")
                 st.code(st.session_state.session_id, language='text')
                 
-                st.subheader("Brand Basics")
+                st.subheader("Brand Elements")
 
                 if st.session_state.user_info.get("ideal_customer"):
                     if st.button("Ideale Klantenkenner", use_container_width=True):
@@ -276,7 +276,7 @@ def main():
                     st.markdown(st.session_state.error_message)
 
             if st.session_state.page_title == "":
-                st.subheader("Brand Basics")
+                st.subheader("Brand Elements")
 
                 if st.session_state.user_info.get("ideal_customer"):
                     if st.button("Ideale Klantenkenner", use_container_width=True, key="b1"):
