@@ -86,58 +86,62 @@ def format_messages(messages):
 
 
 def _normalize_brand_element_key(name: str) -> str:
-    """Return Brand Element display name as-is for user_info lookup."""
-    return name if isinstance(name, str) else ""
-
-
-def _airtable_get_all(table_id: str):
-    """Fetch all records from an Airtable table, handling pagination."""
-    if not AIRTABLE_API_KEY:
-        raise RuntimeError("AIRTABLE_API_KEY is not set in environment")
-    headers = {
-        "Authorization": f"Bearer {AIRTABLE_API_KEY}",
-    }
-    url = f"https://api.airtable.com/v0/{AIRTABLE_BASE_ID}/{table_id}"
-    params = {}
-    all_records = []
-    while True:
-        resp = requests.get(url, headers=headers, params=params, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
-        all_records.extend(data.get("records", []))
-        offset = data.get("offset")
-        if not offset:
-            break
-        params["offset"] = offset
-    return all_records
+    """Normalize Brand Element key for consistent comparisons."""
+    if not isinstance(name, str):
+        return ""
+    s = name.strip()
+    s = s.replace("-", " ")
+    s = " ".join(s.split())  # collapse internal whitespace
+    s = s.replace(" ", "_").lower()
+    while "__" in s:
+        s = s.replace("__", "_")
+    return s
 
 
 @st.cache_data(ttl=300)
 def get_configured_agents():
     try:
-        # Fetch Brand Elements and build lookup by record id
-        be_records = _airtable_get_all(AIRTABLE_BRAND_ELEMENTS_TABLE_ID)
-        brand_element_by_id = {}
-        for rec in be_records:
-            fields = rec.get("fields", {})
-            name = fields.get("Name") or fields.get("name") or ""
-            key = _normalize_brand_element_key(name)
-            brand_element_by_id[rec.get("id")] = {"id": rec.get("id"), "name": name, "key": key}
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_TOKEN}",
+        }
+        resp = requests.get(f"{HOST}/agents", headers=headers, timeout=20)
+        if resp.status_code == 200:
+            data = resp.json() or {}
+            agents = data.get("agents", [])
+            return agents
+        return {[]}
+    except Exception:
+        return {[]}
 
-        # Fetch Agents
-        ag_records = _airtable_get_all(AIRTABLE_AGENTS_TABLE_ID)
-        agents = []
-        for rec in ag_records:
-            fields = rec.get("fields", {})
-            agent_name = fields.get("name") or fields.get("Name") or "Unnamed Agent"
-            linked_ids = fields.get("Brand Elements") or []
-            brand_elements = [brand_element_by_id[x] for x in linked_ids if x in brand_element_by_id]
-            agents.append({
-                "id": rec.get("id"),
-                "name": agent_name,
-                "brand_elements": brand_elements,
-            })
-        return {"agents": agents}
+@st.cache_data(ttl=300)
+def get_brand_element_agents():
+    try:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {API_TOKEN}",
+        }
+        resp = requests.get(f"{HOST}/brand_element_agents", headers=headers, timeout=20)
+        if resp.status_code == 200:
+            data = resp.json() or {}
+            agents = data.get("agents", [])
+            normalized_agents = []
+            for agent in agents:
+                name = agent.get("name") or "Unnamed Agent"
+                be_list = agent.get("brand_elements") or []
+                normalized_be = []
+                for be in be_list:
+                    normalized_be.append({
+                        "name": be.get("name") or "",
+                        "key": _normalize_brand_element_key(be.get("key") or ""),
+                        "description": be.get("description") or "",
+                    })
+                normalized_agents.append({
+                    "name": name,
+                    "brand_elements": normalized_be,
+                })
+            return {"agents": normalized_agents}
+        return {"agents": []}
     except Exception:
         return {"agents": []}
 
@@ -218,10 +222,10 @@ def main():
         st.write("---")
         st.subheader("Configured Agents")
         agents = get_configured_agents()
-        if not agents or not agents.get("agents"):
+        if not agents:
             st.info("No agents found or failed to fetch agents.")
         else:
-            st.write([a["name"] for a in agents["agents"]])
+            st.write([a for a in agents])
     else:
         user_info_data = get_user_info()
 
@@ -275,11 +279,12 @@ def main():
                     st.markdown(st.session_state.error_message)
 
             if st.session_state.page_title == "":
-                agents_cfg = get_configured_agents()
+                brand_agents = get_brand_element_agents()
                 user_be = (st.session_state.user_info or {}).get("brand_elements", {})
+                normalized_user_be = { _normalize_brand_element_key(k): v for k, v in (user_be or {}).items() }
 
                 st.subheader("Brand Elements")
-                agents_list = [a for a in agents_cfg.get("agents", []) if a.get("brand_elements")]
+                agents_list = [a for a in brand_agents.get("agents", []) if a.get("brand_elements")]
                 num_cols = 3
                 for row_start in range(0, len(agents_list), num_cols):
                     row_agents = agents_list[row_start:row_start+num_cols]
@@ -288,22 +293,22 @@ def main():
                         with cols[idx]:
                             be_list = agent.get("brand_elements", [])
                             # Determine completion
-                            completed = all(bool(user_be.get(be.get("key"))) for be in be_list)
+                            completed = all(bool(normalized_user_be.get(_normalize_brand_element_key(be.get("key")))) for be in be_list)
                             # Button: primary if incomplete
                             if completed:
-                                if st.button(agent["name"], use_container_width=True, key=f"start_{agent['id']}"):
+                                if st.button(agent["name"], use_container_width=True, key=f"start_{agent['name']}"):
                                     st.session_state.page_title = agent["name"]
                                     st.session_state.agent_id = agent["name"]
                                     st.rerun()
                             else:
-                                if st.button(agent["name"], use_container_width=True, type="primary", key=f"start_{agent['id']}"):
+                                if st.button(agent["name"], use_container_width=True, type="primary", key=f"start_{agent['name']}"):
                                     st.session_state.page_title = agent["name"]
                                     st.session_state.agent_id = agent["name"]
                                     st.rerun()
                             # Brand Elements status list
                             for be in be_list:
                                 name = be.get("name")
-                                value = user_be.get(be.get("key"))
+                                value = normalized_user_be.get(_normalize_brand_element_key(be.get("key")))
                                 if value:
                                     st.success(f"✅ {name}")
                                 else:
