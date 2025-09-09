@@ -326,8 +326,12 @@ def main():
                         st.markdown(message["content"])
 
                 # ✅ Notifications below messages
-                for key in updated_keys:
-                    st.success(f'New value saved: {key}', icon="✅")
+                if updated_keys:
+                    if len(updated_keys) == 1:
+                        st.success(f"New value saved: {updated_keys[0]}", icon="✅")
+                    else:
+                        keys_str = ", ".join(updated_keys)
+                        st.success(f"New values saved: {keys_str}", icon="✅")
 
                 # React to user input
                 if prompt := st.chat_input("Hallo, hoe kan ik je vandaag helpen?"):
