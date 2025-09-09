@@ -141,24 +141,50 @@ def get_brand_element_agents():
     except Exception:
         return {"agents": []}
 
+# New: resolve UUID from manual user id
+def resolve_user_uuid(manual_user_id):
+    try:
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
+        resp = requests.get(f"{HOST}/user/user_id", headers=headers, params={"legacy_user_id": manual_user_id}, timeout=20)
+        if resp.status_code == 200:
+            data = resp.json() or {}
+            
+            return data
+        return None
+    except Exception:
+        return None
 
-def get_user_info():
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
-    user_info = requests.get(f"{HOST}/user_info", headers=headers, params={"user_id": st.session_state.user_id})
-    if user_info.status_code == 200:
-        user_info_data = user_info.json()
-    else:
-        user_info_data = {"error": "Failed to fetch user info"}
-    return user_info_data
+def get_user_brand_elements():
+    try:
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
+        resp = requests.get(f"{HOST}/user/user_brand_elements", headers=headers, params={"user_id": st.session_state.user_id}, timeout=20)
+        if resp.status_code == 200:
+            return resp.json() or {"brand_elements": {}}
+        return {"brand_elements": {}}
+    except Exception:
+        return {"brand_elements": {}}
+
+# New: fetch user name using UUID
+def fetch_user_name():
+    try:
+        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
+        resp = requests.get(f"{HOST}/user/user_name", headers=headers, params={"legacy_user_id": st.session_state.manual_user_id}, timeout=20)
+        if resp.status_code == 200:
+            return resp.json() or {}
+        return {}
+    except Exception:
+        return {}
+
 
 def set_user_name(name):
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_TOKEN}"}
-    user_info = requests.post(f"{HOST}/user_name", headers=headers, json={"user_id": st.session_state.user_id, "name":name})
-    if user_info.status_code == 200:
-        user_info_data = user_info.json()
-    else:
-        user_info_data = {"error": "Failed to fetch user info"}
-    return user_info_data
+    try:
+        resp = requests.post(f"{HOST}/user/user_name", headers=headers, json={"user_id": st.session_state.user_id, "name": name}, timeout=20)
+        if resp.status_code == 200:
+            return {"success": True, "data": resp.json()}
+        return {"success": False, "error": "Failed to save user name", "status": resp.status_code}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 
@@ -210,8 +236,19 @@ def main():
             st.error("Please enter a valid number.")
         if st.button("Ok"):
             if number_input.isnumeric():
-                st.session_state.user_id= int(number_input)
-                st.rerun()
+                manual_id = int(number_input)
+                uuid_data = resolve_user_uuid(manual_id)
+                uuid_value = uuid_data.get("user_id") if isinstance(uuid_data, dict) else uuid_data
+                if uuid_value:
+                    st.session_state.manual_user_id = manual_id
+                    st.session_state.user_id = uuid_value
+                    # If API also returned a name, store it
+                    if isinstance(uuid_data, dict) and uuid_data.get("name"):
+                        st.session_state.user_name = uuid_data.get("name")
+                        st.session_state.name_set = True
+                    st.rerun()
+                else:
+                    st.error("Failed to resolve user ID. Please try again.")
             else:
                 st.error("Input must be a number.")
 
@@ -223,25 +260,38 @@ def main():
         else:
             st.write([a for a in agents])
     else:
-        user_info_data = get_user_info()
+        if "name_set" not in st.session_state:
+            st.session_state.name_set = False
 
-        if user_info_data.get("name") == None:
-            name_input = st.text_input("Enter a name:", key="name_input")
-            if st.button("Ok"):
+        if not st.session_state.name_set:
+            # Try to fetch existing name from API first
+            fetched_name = fetch_user_name()
+            if fetched_name:
+                st.session_state.user_name = fetched_name
+                st.session_state.name_set = True
+                st.rerun()
+            name_input = st.text_input("Enter a name:", key="name_input", value=st.session_state.get("user_name") or "")
+            if st.button("Ok", key="ok_name"):
                 if name_input:
-                    st.session_state.user_info_data = set_user_name(name_input)
-                    st.rerun()
+                    result = set_user_name(name_input)
+                    if result.get("success"):
+                        st.session_state.user_name = name_input
+                        st.session_state.name_set = True
+                        st.rerun()
+                    else:
+                        st.error(result.get("error") or "Failed to save name.")
                 else:
                     st.error("Please enter a name.")
         else:
+            brand_elements_data = get_user_brand_elements()
             updated_keys = []
-            if "user_info" in st.session_state:
-                prev_be = (st.session_state.user_info or {}).get("brand_elements", {})
-                curr_be = (user_info_data or {}).get("brand_elements", {})
+            if "brand_elements" in st.session_state:
+                prev_be = st.session_state.brand_elements or {}
+                curr_be = (brand_elements_data or {}).get("brand_elements", {})
                 for k, v in (curr_be or {}).items():
                     if v is not None and (prev_be.get(k) in (None, "")):
                         updated_keys.append(k)
-            st.session_state.user_info = user_info_data
+            st.session_state.brand_elements = (brand_elements_data or {}).get("brand_elements", {})
 
             # Initialize chat history
             if "messages" not in st.session_state:
@@ -266,9 +316,18 @@ def main():
                 st.subheader("Session ID")
                 st.code(st.session_state.session_id, language='text')
                 
-                st.subheader("User Information")
+                st.subheader("User IDs")
+                st.json({
+                    "manual_user_id": st.session_state.get("manual_user_id"),
+                    "user_id": st.session_state.get("user_id"),
+                })
+
+                st.subheader("User Name")
+                st.write(st.session_state.get("user_name") or "(not set)")
+
+                st.subheader("User Brand Elements")
                 user_info_placeholder = st.empty()
-                user_info_placeholder.json(user_info_data)
+                user_info_placeholder.json(brand_elements_data)
 
                 if st.session_state.error_message:
                     st.subheader("Error")
@@ -276,7 +335,7 @@ def main():
 
             if st.session_state.page_title == "":
                 brand_agents = get_brand_element_agents()
-                user_be = (st.session_state.user_info or {}).get("brand_elements", {})
+                user_be = st.session_state.brand_elements or {}
                 normalized_user_be = { _normalize_brand_element_key(k): v for k, v in (user_be or {}).items() }
 
                 st.subheader("Brand Elements")
@@ -310,12 +369,12 @@ def main():
                                 else:
                                     st.warning(f"⏳ {name}")
 
-                st.write("---")
-                st.subheader("Main Coaching Bot")
-                if st.button("Main Coaching Bot", use_container_width=True, key="start_main"):
-                    st.session_state.page_title = "Main Coaching Bot"
-                    st.session_state.agent_id = None
-                    st.rerun()
+            st.write("---")
+            st.subheader("Main Coaching Bot")
+            if st.button("Main Coaching Bot", use_container_width=True, key="start_main"):
+                st.session_state.page_title = "Main Coaching Bot"
+                st.session_state.agent_id = None
+                st.rerun()
 
             if st.session_state.page_title != "":
                 st.title(st.session_state.page_title)
