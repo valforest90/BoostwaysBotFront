@@ -3,4 +3,3 @@ streamlit
 python-dotenv
 asyncio
 httpx
-python-dotenv

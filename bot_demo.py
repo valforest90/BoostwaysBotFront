@@ -10,10 +10,6 @@ load_dotenv()
 
 HOST = os.getenv("HOST")
 API_TOKEN = os.getenv("API_TOKEN")
-AIRTABLE_API_KEY = os.getenv("AIRTABLE_API_KEY")
-AIRTABLE_BASE_ID = "app5fTUft32PUzoPv"
-AIRTABLE_AGENTS_TABLE_ID = "tblEJJWL4bAFQqf0n"
-AIRTABLE_BRAND_ELEMENTS_TABLE_ID = "tblQLSn8NDFAxL9eU"
 
 async def stream_response(user_id, messages, session_id, agent_id):
     for message in messages:
