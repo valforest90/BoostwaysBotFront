@@ -333,11 +333,16 @@ def main():
                     st.subheader("Error")
                     st.markdown(st.session_state.error_message)
 
+            st.subheader("Main Coaching Bot")
+            if st.button("Main Coaching Bot", use_container_width=True, key="start_main"):
+                st.session_state.page_title = "Main Coaching Bot"
+                st.session_state.agent_id = None
+                st.rerun()
+
             if st.session_state.page_title == "":
                 brand_agents = get_brand_element_agents()
                 user_be = st.session_state.brand_elements or {}
                 normalized_user_be = { _normalize_brand_element_key(k): v for k, v in (user_be or {}).items() }
-
                 st.subheader("Brand Elements")
                 agents_list = [a for a in brand_agents.get("agents", []) if a.get("brand_elements")]
                 num_cols = 3
@@ -347,9 +352,7 @@ def main():
                     for idx, agent in enumerate(row_agents):
                         with cols[idx]:
                             be_list = agent.get("brand_elements", [])
-                            # Determine completion
                             completed = all(bool(normalized_user_be.get(_normalize_brand_element_key(be.get("key")))) for be in be_list)
-                            # Button: primary if incomplete
                             if completed:
                                 if st.button(agent["name"], use_container_width=True, key=f"start_{agent['name']}"):
                                     st.session_state.page_title = agent["name"]
@@ -360,7 +363,6 @@ def main():
                                     st.session_state.page_title = agent["name"]
                                     st.session_state.agent_id = agent["name"]
                                     st.rerun()
-                            # Brand Elements status list
                             for be in be_list:
                                 name = be.get("name")
                                 value = normalized_user_be.get(_normalize_brand_element_key(be.get("key")))
@@ -370,12 +372,6 @@ def main():
                                     st.warning(f"⏳ {name}")
 
             st.write("---")
-            st.subheader("Main Coaching Bot")
-            if st.button("Main Coaching Bot", use_container_width=True, key="start_main"):
-                st.session_state.page_title = "Main Coaching Bot"
-                st.session_state.agent_id = None
-                st.rerun()
-
             if st.session_state.page_title != "":
                 st.title(st.session_state.page_title)
 
@@ -401,7 +397,7 @@ def main():
                 # First message
                 if len(st.session_state.messages) == 0:
                     process_prompt()
-            
+
             with st.sidebar:
                 text_contents = f"User {st.session_state.user_id}\n"
                 text_contents += format_messages(st.session_state.messages)
